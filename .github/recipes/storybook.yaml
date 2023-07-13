@@ -1,0 +1,93 @@
+# Deploy storybook to Github Pages then test
+name: Storybook
+
+on:
+  push:
+    # For monorepo
+    # paths:
+    # - "packages/components/**"
+    # - "!packages/components/**/*.md"
+  workflow_dispatch:
+
+# For monorepo
+# defaults:
+#   run:
+#     working-directory: packages/components
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-node-and-restore-packages
+      - uses: actions/cache@v3
+        name: Setup storybook cache
+        id: storybook-cache
+        with:
+          path: ${{ env.STORYBOOK_PATH }}
+          key: storybook-${{ github.sha }}
+          restore-keys: |
+            storybook-
+        env:
+          STORYBOOK_PATH: storybook-static
+          # For monorepo
+          # STORYBOOK_PATH: ./packages/components/storybook-static
+      - name: Build storybook
+        run: pnpm run build-storybook
+      - uses: actions/upload-pages-artifact@v1
+        with:
+          path: storybook-static
+          # For monorepo
+          # path: ./packages/components/storybook-static
+
+  deploy:
+    timeout-minutes: 5
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+
+  test:
+    runs-on: ubuntu-latest
+    needs: deploy
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-node-and-restore-packages
+      - name: Get installed Playwright version
+        id: playwright-version
+        run: echo "::set-output name=version::$( sh .github/scripts/get-playwright-version.sh )"
+      - name: Cache playwright binaries
+        uses: actions/cache@v3
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: "${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}"
+          restore-keys: ${{ runner.os }}-playwright-
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
+      - name: Run Storybook tests
+        run: pnpm test-storybook
+        env:
+          TARGET_URL: ${{needs.deploy.outputs.url }}

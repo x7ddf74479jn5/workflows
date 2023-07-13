@@ -1,0 +1,4 @@
+"Type: Release":
+  - .changeset/**/*
+"Package: Foo":
+  - packages/foo/**/*

@@ -1,0 +1,44 @@
+name: Lighthouse CI
+
+on:
+  deployment_status:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  lighthouse-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+      contents: read
+      statuses: write
+    if: |
+      github.ref == 'refs/heads/main' && 
+      github.event.deployment_status.state == 'success'
+    steps:
+      - uses: actions/checkout@v3
+      - run: mkdir -p ${{ github.workspace }}/tmp/artifacts
+      - name: Add JP font
+        run: sudo apt-get install fonts-noto
+      - name: Run Lighthouse
+        uses: foo-software/lighthouse-check-action@master
+        with:
+          device: "all"
+          locale: "ja"
+          gitAuthor: ${{ github.actor }}
+          gitBranch: ${{ github.ref }}
+          gitHubAccessToken: ${{ secrets.LIGHTHOUSE_CHECK_GITHUB_ACCESS_TOKEN }}
+          outputDirectory: ${{ github.workspace }}/tmp/artifacts
+          urls: ${{ github.event.deployment_status.target_url }}
+          sha: ${{ github.sha }}
+          slackWebhookUrl: ${{ secrets.LIGHTHOUSE_CHECK_WEBHOOK_URL }}
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: Lighthouse reports
+          path: ${{ github.workspace }}/tmp/artifacts
+          retention-days: 30

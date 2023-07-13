@@ -1,0 +1,19 @@
+name: Pull Request Labeler
+# NOTE: .github直下にlaber.ymlを設置しておく
+
+on:
+  workflow_call:
+    secrets:
+      github_token:
+        required: true
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@v4
+        with:
+          repo-token: ${{ secrets.github_token }}
