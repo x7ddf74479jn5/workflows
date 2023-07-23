@@ -1,5 +1,5 @@
 name: Check code within changed packages for monorepo
-# Lint and test workflow for monorepo
+# Lint typecheck, and test workflow for monorepo
 
 on:
   pull_request:
@@ -37,6 +37,22 @@ jobs:
         uses: ./.github/actions/setup-node-and-pnpm-then-restore-packages
       - name: Run lint
         run: pnpm lint
+        working-directory: ${{ matrix.package }}
+
+  typecheck:
+    name: Typecheck only changed packages
+    needs: [generate_matrix]
+    if: ${{ !fromJson(needs.generate_matrix.outputs.empty) }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: ${{ fromJson(needs.generate_matrix.outputs.package) }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node and pnpm then restore packages
+        uses: ./.github/actions/setup-node-and-pnpm-then-restore-packages
+      - name: Run typecheck
+        run: pnpm typecheck
         working-directory: ${{ matrix.package }}
 
   test:
