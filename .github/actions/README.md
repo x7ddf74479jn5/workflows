@@ -6,5 +6,6 @@
 
 ## 一覧
 
+- [build-and-cache](./build-and-cache/action.yaml): ビルドの成果物をキャッシュ・復元する。
 - [setup-node-and-pnpm-then-restore-packages](./setup-node-and-pnpm-then-restore-packages/action.yaml): Node.js と pnpm の初期設定とキャッシュから`node_modules`を復元する。
 - [setup-puppeteer](./setup-puppeteer/action.yml): キャッシュを利用して Puppeteer の設定をする。
